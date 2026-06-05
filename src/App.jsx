@@ -100,8 +100,14 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* Sidebar Navigation (Desktop) */}
-      <aside className={`sidebar ${mobileMenuOpen ? 'flex' : ''}`}>
+      {/* Sidebar Overlay Backdrop for Mobile */}
+      <div 
+        className={`sidebar-overlay ${mobileMenuOpen ? 'visible' : ''}`} 
+        onClick={() => setMobileMenuOpen(false)}
+      />
+
+      {/* Sidebar Navigation (Desktop & Mobile Drawer) */}
+      <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
         <div>
           <div className="sidebar-logo">
             <Sprout className="logo-icon" />
