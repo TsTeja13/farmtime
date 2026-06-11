@@ -13,7 +13,9 @@ import {
   Menu,
   X,
   User,
-  Heart
+  Heart,
+  ShoppingBag,
+  LogOut
 } from 'lucide-react';
 
 import Dashboard from './components/Dashboard';
@@ -23,11 +25,24 @@ import FarmingTips from './components/FarmingTips';
 import WeatherCalendar from './components/WeatherCalendar';
 import MandiPrices from './components/MandiPrices';
 import SoilHealth from './components/SoilHealth';
+import Auth from './components/Auth';
+import Marketplace from './components/Marketplace';
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Load Session on mount
+  useEffect(() => {
+    const session = localStorage.getItem('farmtime_session');
+    if (session) {
+      setCurrentUser(JSON.parse(session));
+    }
+    setAuthChecked(true);
+  }, []);
   
   // Simulated agricultural weather sensor values
   const [weatherData, setWeatherData] = useState({
@@ -83,6 +98,8 @@ export default function App() {
         return <MandiPrices />;
       case 'soil':
         return <SoilHealth />;
+      case 'marketplace':
+        return <Marketplace currentUser={currentUser} />;
       default:
         return <Dashboard setActiveTab={setActiveTab} weatherData={weatherData} />;
     }
@@ -95,8 +112,27 @@ export default function App() {
     { id: 'tips', label: 'Natural Farming', icon: BookOpen },
     { id: 'weather', label: 'Sowing Calendar', icon: Calendar },
     { id: 'mandi', label: 'Mandi Rates', icon: TrendingUp },
-    { id: 'soil', label: 'Soil Health', icon: Activity }
+    { id: 'soil', label: 'Soil Health', icon: Activity },
+    { id: 'marketplace', label: 'Marketplace', icon: ShoppingBag }
   ];
+
+  const handleLogout = () => {
+    localStorage.removeItem('farmtime_session');
+    setCurrentUser(null);
+    setActiveTab('dashboard');
+  };
+
+  if (authChecked && !currentUser) {
+    return <Auth setUser={setCurrentUser} />;
+  }
+
+  if (!authChecked) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-app">
+        <Sprout className="logo-icon text-primary animate-spin icon-lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
@@ -178,9 +214,16 @@ export default function App() {
                 <User className="icon-xs" />
               </div>
               <div className="hidden lg:flex flex-col text-[11px]">
-                <span className="font-semibold text-secondary-deep">Teja S.</span>
-                <span className="text-muted text-[10px]">Agro-Developer</span>
+                <span className="font-semibold text-secondary-deep capitalize">{currentUser.name}</span>
+                <span className="text-muted text-[10px] capitalize">{currentUser.role === 'farmer' ? 'Farmer / Seller' : 'Buyer'}</span>
               </div>
+              <button 
+                onClick={handleLogout}
+                className="btn btn-outline btn-sm p-1.5 ml-2 border-danger-20 text-danger hover:bg-danger-10 rounded-full"
+                title="Logout"
+              >
+                <LogOut className="icon-xs" />
+              </button>
             </div>
           </div>
         </header>
