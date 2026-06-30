@@ -7,7 +7,10 @@ import {
   Check, 
   BookOpen, 
   HelpCircle,
-  Sparkles
+  Sparkles,
+  Key,
+  ShieldCheck,
+  Zap
 } from 'lucide-react';
 
 const SUGGESTED_PROMPTS = [
@@ -160,6 +163,10 @@ export default function Chatbot() {
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [geminiKey, setGeminiKey] = useState(localStorage.getItem('farmtime_gemini_key') || '');
+  const [isKeySaved, setIsKeySaved] = useState(!!localStorage.getItem('farmtime_gemini_key'));
+  const [showKeyInput, setShowKeyInput] = useState(false);
+
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -170,7 +177,22 @@ export default function Chatbot() {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const handleSend = (textToSend) => {
+  // Save/Delete Key handlers
+  const handleSaveKey = () => {
+    if (geminiKey.trim()) {
+      localStorage.setItem('farmtime_gemini_key', geminiKey.trim());
+      setIsKeySaved(true);
+      setShowKeyInput(false);
+    }
+  };
+
+  const handleClearKey = () => {
+    localStorage.removeItem('farmtime_gemini_key');
+    setGeminiKey('');
+    setIsKeySaved(false);
+  };
+
+  const handleSend = async (textToSend) => {
     const query = textToSend || inputText;
     if (!query.trim()) return;
 
@@ -185,37 +207,85 @@ export default function Chatbot() {
     if (!textToSend) setInputText('');
     setIsTyping(true);
 
-    // Simulate Bot Response with NLP lookup
-    setTimeout(() => {
-      const lowerQuery = query.toLowerCase();
-      let responseText = '';
+    // Call Real Gemini API if key is present
+    if (isKeySaved && geminiKey.trim()) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey.trim()}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{
+                  text: `You are Krishi Mitra, a friendly and extremely knowledgeable Indian Agricultural Officer & Natural Farming Expert. Answer this query in a supportive, practical, structured manner using headings (###), bold tags (**), bullet points, and appropriate farming emojis. Keep answers clear and easy to read. Query: ${query}`
+                }]
+              }]
+            })
+          }
+        );
 
-      // Check knowledge base
-      const matched = BOT_KNOWLEDGE.find(item => 
-        item.keywords.some(keyword => lowerQuery.includes(keyword))
-      );
+        if (!response.ok) {
+          throw new Error(`API returned error status: ${response.status}`);
+        }
 
-      if (matched) {
-        responseText = matched.response;
-      } else {
-        responseText = `### 🌱 Thank you for asking Krishi Mitra!
+        const data = await response.json();
+        const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated from Gemini.';
+
+        setMessages((prev) => [...prev, {
+          sender: 'bot',
+          text: responseText,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+      } catch (err) {
+        console.error(err);
+        setMessages((prev) => [...prev, {
+          sender: 'bot',
+          text: `⚠️ **API Connection Error**: Failed to fetch answers from Gemini server. Falling back to local offline mode.\n\nError details: ${err.message}`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+        // Fallback to local
+        triggerLocalFallback(query);
+      } finally {
+        setIsTyping(false);
+      }
+    } else {
+      // Local fallback lookup
+      setTimeout(() => {
+        triggerLocalFallback(query);
+        setIsTyping(false);
+      }, 800);
+    }
+  };
+
+  const triggerLocalFallback = (query) => {
+    const lowerQuery = query.toLowerCase();
+    let responseText = '';
+
+    // Check knowledge base
+    const matched = BOT_KNOWLEDGE.find(item => 
+      item.keywords.some(keyword => lowerQuery.includes(keyword))
+    );
+
+    if (matched) {
+      responseText = matched.response;
+    } else {
+      responseText = `### 🌱 Thank you for asking Krishi Mitra!
 I'm analyzing your question: *"${query}"*. 
 
 As an Agricultural Officer, here are general guidelines:
 1. **Soil Fertility**: Ensure you add compost or **Jeevamrutha** periodically rather than relying entirely on synthetic chemical urea.
-2. **Pest Control**: Try natural sprays like **Neemastra** or **Sour Buttermilk** before introducing hazardous organophosphates.
+2. **Pest Control**: Try natural sprays like **Neemastra** or **Sour Buttermilk** before introducing hazardous chemical pesticides.
 3. **Water Management**: Drip irrigation preserves soil structure and prevents fungal spores on plant foliage.
 
 Could you clarify if you are asking about a specific plant (like tomato, potato, rice) or a natural preparation recipe? Try typing **Jeevamrutha** or **Neemastra** for exact step-by-step recipes!`;
-      }
+    }
 
-      setMessages((prev) => [...prev, {
-        sender: 'bot',
-        text: responseText,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }]);
-      setIsTyping(false);
-    }, 1000);
+    setMessages((prev) => [...prev, {
+      sender: 'bot',
+      text: responseText,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }]);
   };
 
   const handleKeyPress = (e) => {
@@ -226,7 +296,6 @@ Could you clarify if you are asking about a specific plant (like tomato, potato,
   const renderMessageText = (text) => {
     return text.split('\n').map((line, idx) => {
       let content = line;
-      let styleClass = "";
 
       // Header H3
       if (content.startsWith('### ')) {
@@ -277,7 +346,7 @@ Could you clarify if you are asking about a specific plant (like tomato, potato,
   return (
     <div className="fade-in max-w-4xl mx-auto flex-col h-[calc(100vh-140px)]">
       {/* Bot Header */}
-      <div className="glass-card p-4 flex justify-between items-center shrink-0 mb-4">
+      <div className="glass-card p-4 flex justify-between items-center shrink-0 mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <div className="icon-wrapper bg-primary-10 relative">
             <Bot className="text-primary icon-md" />
@@ -290,10 +359,48 @@ Could you clarify if you are asking about a specific plant (like tomato, potato,
             <p className="text-xs text-muted">Agricultural Expert & Organic Farming Advisor • Online</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <span className="badge badge-accent"><Sprout className="icon-xs" /> ZBNF Specialist</span>
+
+        {/* AI Key Connector Button */}
+        <div className="flex gap-2 items-center">
+          {isKeySaved ? (
+            <button 
+              onClick={handleClearKey}
+              className="btn btn-xs btn-outline border-success text-success hover:bg-success-10 flex items-center gap-1 font-semibold"
+              title="Click to clear key"
+            >
+              <ShieldCheck className="w-3 h-3 text-success animate-pulse" /> Live Gemini AI Active
+            </button>
+          ) : (
+            <button 
+              onClick={() => setShowKeyInput(!showKeyInput)}
+              className="btn btn-xs btn-outline border-warning text-warning-deep hover:bg-warning-10 flex items-center gap-1 font-semibold"
+            >
+              <Key className="w-3 h-3" /> Connect Gemini Key
+            </button>
+          )}
+          <span className="badge badge-accent hidden sm:inline-flex"><Sprout className="icon-xs" /> ZBNF Specialist</span>
         </div>
       </div>
+
+      {/* API Key Inline Drawer */}
+      {showKeyInput && !isKeySaved && (
+        <div className="glass-card p-4 mb-4 flex gap-2 items-center justify-between border-warning border fade-in shrink-0">
+          <div className="flex-1 flex gap-2 items-center">
+            <Key className="icon-xs text-warning" />
+            <input 
+              type="password"
+              placeholder="Paste Google Gemini API Key (e.g. AIzaSy...)"
+              value={geminiKey}
+              onChange={(e) => setGeminiKey(e.target.value)}
+              className="form-input text-xs flex-1 h-8 py-1"
+            />
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button className="btn btn-primary btn-xs py-1.5 px-3 font-semibold" onClick={handleSaveKey}>Save</button>
+            <button className="btn btn-outline btn-xs py-1.5 px-3 font-semibold" onClick={() => setShowKeyInput(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-3-1 flex-1 min-h-0 gap-4">
         {/* Chat window panel */}
@@ -364,7 +471,7 @@ Could you clarify if you are asking about a specific plant (like tomato, potato,
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Ask about crops, pests, Jeevamrutha preparation..." 
+              placeholder={isKeySaved ? "Ask Krishi Mitra AI anything..." : "Ask about crops, pests, Jeevamrutha preparation..."} 
               className="form-input flex-1"
               disabled={isTyping}
             />
@@ -379,7 +486,7 @@ Could you clarify if you are asking about a specific plant (like tomato, potato,
         </div>
 
         {/* Sidebar Info Panel */}
-        <div className="glass-card p-4 hidden md:flex flex-col gap-4">
+        <div className="glass-card p-4 hidden md:flex flex-col gap-4 animate-fade-in">
           <h3 className="h4 flex items-center gap-1.5 border-b pb-2">
             <BookOpen className="text-primary icon-xs" /> Organic Glossary
           </h3>
