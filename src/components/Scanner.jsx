@@ -141,6 +141,50 @@ const DISEASE_DATABASE = {
       chemical: 'Mefenoxam or Copper oxychloride.',
       prevention: 'Ensure excellent canopy aeration. Avoid high density planting.'
     }
+  ],
+  wheat: [
+    {
+      id: 'wheat_leaf_rust',
+      name: 'Wheat Leaf Rust (Puccinia recondita)',
+      trigger: (y, b, w) => y > 12 && b > 4,
+      severity: 'High',
+      description: 'Fungal infection forming small, round-to-oval orange-brown pustules on leaf blades and sheaths, reducing active chlorophyll surface.',
+      organic: 'Spray diluted **Dashaparni Ark** or baking soda solution. Ensure crop spacing is balanced.',
+      chemical: 'Apply Tebuconazole or Propiconazole fungicides.',
+      prevention: 'Plant rust-resistant wheat seed varieties and practice balanced nitrogen application.'
+    },
+    {
+      id: 'wheat_loose_smut',
+      name: 'Loose Smut (Ustilago tritici)',
+      trigger: (y, b, w) => b > 12,
+      severity: 'Critical',
+      description: 'Transforms grain heads into black, dusty spore masses. Spores spread rapidly with wind to neighboring wheat plants.',
+      organic: 'Immediately destroy affected heads. Treat seeds with solar heat treatment before sowing.',
+      chemical: 'Treat seeds with Carboxin or Carbendazim systemic fungicides.',
+      prevention: 'Always sow certified pathogen-free seeds. Keep crop rotations active.'
+    }
+  ],
+  corn: [
+    {
+      id: 'corn_common_rust',
+      name: 'Common Rust (Puccinia sorghi)',
+      trigger: (y, b, w) => b > 8 && y > 8,
+      severity: 'Moderate',
+      description: 'Golden-brown elongated spots appearing on both upper and lower leaf surfaces, reducing leaf efficiency.',
+      organic: 'Spray Neem oil solution or **Sour Buttermilk spray**. Keep plant leaves dry.',
+      chemical: 'Spray Pyraclostrobin or Azoxystrobin under severe outbreaks.',
+      prevention: 'Destroy residue after harvest. Plant resistant corn hybrids.'
+    },
+    {
+      id: 'corn_leaf_blight',
+      name: 'Northern Corn Leaf Blight (Exserohilum turcicum)',
+      trigger: (y, b, w) => y > 15,
+      severity: 'High',
+      description: 'Produces long, elliptical, greyish-green lesions (cigar-shaped) parallel to leaf margins.',
+      organic: 'Apply foliar spray of compost tea or **Jeevamrutha**. Prune lower infected leaves.',
+      chemical: 'Spray Propiconazole or Mancozeb if lesions appear before silking stage.',
+      prevention: 'Perform deep plowing to bury crop residue and rotate crops.'
+    }
   ]
 };
 
@@ -289,6 +333,17 @@ export default function Scanner() {
     const img = new Image();
     img.onload = () => {
       const canvas = canvasRef.current;
+      const overlayCanvas = overlayCanvasRef.current;
+      
+      // Safety guard against React async rendering race condition
+      if (!canvas || !overlayCanvas) {
+        console.warn('Canvas references not mounted yet, retrying analysis in 120ms...');
+        setTimeout(() => {
+          analyzeImage(src);
+        }, 120);
+        return;
+      }
+
       const ctx = canvas.getContext('2d');
       
       // Standardize size for processing
@@ -297,7 +352,6 @@ export default function Scanner() {
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
       // Overlay canvas setup to draw spots
-      const overlayCanvas = overlayCanvasRef.current;
       const oCtx = overlayCanvas.getContext('2d');
       overlayCanvas.width = canvas.width;
       overlayCanvas.height = canvas.height;
