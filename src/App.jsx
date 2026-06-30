@@ -15,7 +15,7 @@ import {
   User,
   Heart,
   ShoppingBag,
-  LogOut
+  RefreshCw
 } from 'lucide-react';
 
 import Dashboard from './components/Dashboard';
@@ -25,24 +25,36 @@ import FarmingTips from './components/FarmingTips';
 import WeatherCalendar from './components/WeatherCalendar';
 import MandiPrices from './components/MandiPrices';
 import SoilHealth from './components/SoilHealth';
-import Auth from './components/Auth';
 import Marketplace from './components/Marketplace';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [authChecked, setAuthChecked] = useState(false);
+  // Bypassed Authentication by pre-populating current user session details
+  const [currentUser, setCurrentUser] = useState({
+    name: 'Rajesh Farmer',
+    email: 'farmer@farm.com',
+    role: 'farmer'
+  });
+  const [authChecked, setAuthChecked] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Load Session on mount
-  useEffect(() => {
-    const session = localStorage.getItem('farmtime_session');
-    if (session) {
-      setCurrentUser(JSON.parse(session));
+  // Switch role helper specifically designed for presentation flow
+  const switchRole = () => {
+    if (currentUser.role === 'farmer') {
+      setCurrentUser({
+        name: 'Anand Buyer',
+        email: 'buyer@shop.com',
+        role: 'buyer'
+      });
+    } else {
+      setCurrentUser({
+        name: 'Rajesh Farmer',
+        email: 'farmer@farm.com',
+        role: 'farmer'
+      });
     }
-    setAuthChecked(true);
-  }, []);
+  };
   
   // Simulated agricultural weather sensor values
   const [weatherData, setWeatherData] = useState({
@@ -115,24 +127,6 @@ export default function App() {
     { id: 'soil', label: 'Soil Health', icon: Activity },
     { id: 'marketplace', label: 'Marketplace', icon: ShoppingBag }
   ];
-
-  const handleLogout = () => {
-    localStorage.removeItem('farmtime_session');
-    setCurrentUser(null);
-    setActiveTab('dashboard');
-  };
-
-  if (authChecked && !currentUser) {
-    return <Auth setUser={setCurrentUser} />;
-  }
-
-  if (!authChecked) {
-    return (
-      <div className="flex justify-center items-center h-screen bg-app">
-        <Sprout className="logo-icon text-primary animate-spin icon-lg" />
-      </div>
-    );
-  }
 
   return (
     <div className="app-container">
@@ -208,7 +202,7 @@ export default function App() {
               <Bell className="text-muted icon-sm" />
             </div>
 
-            {/* User Profile */}
+            {/* User Profile & Demo Switcher */}
             <div className="flex items-center gap-2 border-l pl-3 ml-2">
               <div className="icon-wrapper bg-primary-10 text-primary h-8 w-8 rounded-full">
                 <User className="icon-xs" />
@@ -217,12 +211,15 @@ export default function App() {
                 <span className="font-semibold text-secondary-deep capitalize">{currentUser.name}</span>
                 <span className="text-muted text-[10px] capitalize">{currentUser.role === 'farmer' ? 'Farmer / Seller' : 'Buyer'}</span>
               </div>
+              
+              {/* Quick Switch role button specifically for smooth presentation flow */}
               <button 
-                onClick={handleLogout}
-                className="btn btn-outline btn-sm p-1.5 ml-2 border-danger-20 text-danger hover:bg-danger-10 rounded-full"
-                title="Logout"
+                onClick={switchRole}
+                className="btn btn-outline btn-sm py-1.5 px-3 border-primary text-primary hover:bg-primary-10 rounded-lg ml-2 font-semibold text-[10px] flex items-center gap-1.5 transition-all duration-200"
+                title="Switch view instantly"
               >
-                <LogOut className="icon-xs" />
+                <RefreshCw className="w-3 h-3" />
+                Switch to {currentUser.role === 'farmer' ? 'Buyer' : 'Farmer'}
               </button>
             </div>
           </div>
