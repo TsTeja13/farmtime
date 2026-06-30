@@ -24,7 +24,7 @@ const SUGGESTED_PROMPTS = [
 
 const BOT_KNOWLEDGE = [
   {
-    keywords: ['jeevamrutha', 'jeevamrit', 'microbial', 'soil health'],
+    keywords: ['jeevamrutha', 'jeevamrit', 'microbial', 'bio-fertilizer'],
     response: `### 🌿 How to Prepare Jeevamrutha (Liquid Bio-fertilizer)
 **Jeevamrutha** is a rich culture of micro-organisms that multiplies beneficial soil bacteria.
 
